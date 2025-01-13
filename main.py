@@ -1,160 +1,85 @@
 import pygame
-import math
-import heapq
 
-# Stałe do oznaczania wartości na mapie
-FREE = 0
-OBSTACLE = 5
-PATH = 3
-START = 2
-GOAL = 4
+EMPTY, WALL, ROUTE, START_POINT, END_POINT = 0, 5, 3, 2, 4
+TILE_SIZE, GRID_DIMENSION = 30, 20
 
-# Rozmiary ekranu i komórki
-CELL_SIZE = 30
-WIDTH = 20  # Liczba kolumn
-HEIGHT = 20  # Liczba wierszy
-SCREEN_WIDTH = WIDTH * CELL_SIZE
-SCREEN_HEIGHT = HEIGHT * CELL_SIZE
+def find_path(grid_map, start_pos, end_pos):
+    open_nodes = [start_pos]
+    visited = set()
+    parent = {}
 
-# Funkcja pomocnicza do obliczania odległości euklidesowej
-def heuristic(a, b):
-    return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
+    while open_nodes:
+        current_pos = open_nodes.pop(0)
 
-# Implementacja algorytmu A*
-def a_star(grid, start, goal):
-    rows, cols = len(grid), len(grid[0])
-    open_set = []
-    heapq.heappush(open_set, (0, start))
-    came_from = {}
-    g_score = {start: 0}
-    f_score = {start: heuristic(start, goal)}
-    closed_set = []
+        if current_pos == end_pos:
+            return reconstruct_path(parent, start_pos, end_pos)
 
-    while open_set:
-        _, current = heapq.heappop(open_set)
+        visited.add(current_pos)
 
-        # Jeśli osiągnięto cel, odtwarzamy ścieżkę
-        if current == goal:
-            path = []
-            while current in came_from:
-                path.append(current)
-                current = came_from[current]
-            path.append(start)
-            return path[::-1], closed_set
+        for nx, ny in get_neighbors(grid_map, current_pos):
+            if (nx, ny) not in visited and grid_map[nx][ny] != WALL:
+                visited.add((nx, ny))
+                open_nodes.append((nx, ny))
+                parent[(nx, ny)] = current_pos
 
-        closed_set.append(current)
+    return None
 
-        # Iteracja po sąsiadach
-        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
-            neighbor = (current[0] + dx, current[1] + dy)
-            if 0 <= neighbor[0] < rows and 0 <= neighbor[1] < cols:
-                if grid[neighbor[0]][neighbor[1]] == OBSTACLE or neighbor in closed_set:
-                    continue
+def reconstruct_path(parent, start_pos, end_pos):
+    path = []
+    current_pos = end_pos
+    while current_pos != start_pos:
+        path.append(current_pos)
+        current_pos = parent[current_pos]
+    path.append(start_pos)
+    return path[::-1]
 
-                tentative_g_score = g_score[current] + 1
+def get_neighbors(grid_map, position):
+    x, y = position
+    potential_neighbors = [(x + dx, y + dy) for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]]
+    return [(nx, ny) for nx, ny in potential_neighbors if 0 <= nx < GRID_DIMENSION and 0 <= ny < GRID_DIMENSION]
 
-                if tentative_g_score < g_score.get(neighbor, float('inf')):
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g_score
-                    f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
-                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+def load_map(file_path):
+    with open(file_path) as file:
+        return [list(map(int, line.split())) for line in file]
 
-    return None, closed_set
-
-# Wizualizacja mapy i animacja algorytmu A*
-def visualize(grid, path=None, closed_set=None):
-    pygame.init()
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("A* Algorithm Visualization")
-    clock = pygame.time.Clock()
-
-    path_built = False
-    path_index = 0
-
-    screen.fill((255, 255, 255))
-
-    def draw_grid():
-        for row in range(HEIGHT):
-            for col in range(WIDTH):
-                rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-                if grid[row][col] == OBSTACLE:
-                    pygame.draw.rect(screen, (0, 0, 0), rect)
-                elif grid[row][col] == PATH:
-                    pygame.draw.rect(screen, (0, 255, 0), rect)
-                elif grid[row][col] == START:
-                    pygame.draw.rect(screen, (128, 0, 128), rect)
-                elif grid[row][col] == GOAL:
-                    pygame.draw.rect(screen, (255, 255, 0), rect)
-                pygame.draw.rect(screen, (200, 200, 200), rect, 1)
-
-    def draw_closed_set():
-        for x, y in closed_set[1:]:
-            rect = pygame.Rect(y * CELL_SIZE, x * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            pygame.draw.rect(screen, (255, 0, 0), rect)
-            pygame.draw.rect(screen, (200, 200, 200), rect, 1)
-            pygame.display.flip()
-            pygame.time.delay(20)
-
-    running = True
-
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        draw_grid()
-
-        if closed_set:
-            draw_closed_set()
-            closed_set = None  # Чтобы отобразить закрытый список только один раз
-
-        if path and not path_built:
-            if path_index < len(path):
-                x, y = path[path_index]
-                grid[x][y] = PATH
-                path_index += 1
-                pygame.display.flip()
-                pygame.time.delay(50)
-            else:
-                path_built = True
-
-        pygame.display.flip()
-        clock.tick(30)
-
-    pygame.quit()
-
-# Ładowanie mapy z pliku
-def load_grid_from_file(filename):
-    with open(filename, 'r') as file:
-        grid = []
-        for line in file:
-            grid.append(list(map(int, line.split())))
-    return grid
-
-# Сохранение карты в файл
-def save_grid_to_file(grid, filename):
-    with open(filename, 'w') as file:
-        for row in grid:
+def save_map(grid_map, file_path):
+    with open(file_path, 'w') as file:
+        for row in grid_map:
             file.write(' '.join(map(str, row)) + '\n')
 
-# Ładowanie mapy z pliku grid.txt
-grid = load_grid_from_file('grid.txt')
+def display_path(grid_map, found_path):
+    pygame.init()
+    display = pygame.display.set_mode((GRID_DIMENSION * TILE_SIZE, GRID_DIMENSION * TILE_SIZE))
+    color_mapping = {EMPTY: (255, 255, 255), WALL: (0, 0, 0), ROUTE: (0, 255, 0), START_POINT: (128, 0, 128), END_POINT: (255, 255, 0)}
 
-# Start i cel
-start = (0, 0)
-goal = (19, 16)
+    for path_x, path_y in found_path:
+        grid_map[path_x][path_y] = ROUTE
 
-if grid[start[0]][start[1]] == OBSTACLE or grid[goal[0]][goal[1]] == OBSTACLE:
-    print("Start lub cel znajduje się na przeszkodzie!")
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+
+        for row_idx in range(GRID_DIMENSION):
+            for col_idx in range(GRID_DIMENSION):
+                rect = pygame.Rect(col_idx * TILE_SIZE, row_idx * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                pygame.draw.rect(display, color_mapping.get(grid_map[row_idx][col_idx], (200, 200, 200)), rect)
+                pygame.draw.rect(display, (200, 200, 200), rect, 1)
+
+        pygame.display.update()
+
+grid_data = load_map('grid.txt')
+start_cell, end_cell = (0, 0), (19, 16)
+
+if grid_data[start_cell[0]][start_cell[1]] == WALL or grid_data[end_cell[0]][end_cell[1]] == WALL:
+    print("Początek lub cel znajduje się na przeszkodzie!")
 else:
-    grid[start[0]][start[1]] = START
-    grid[goal[0]][goal[1]] = GOAL
-
-    path, closed_set = a_star(grid, start, goal)
-
-    if path:
-        visualize(grid, path, closed_set)
-        save_grid_to_file(grid, 'final_grid.txt')
-        print("Finalny grid został zapisany w 'final_grid.txt'.")
+    grid_data[start_cell[0]][start_cell[1]], grid_data[end_cell[0]][end_cell[1]] = START_POINT, END_POINT
+    found_path = find_path(grid_data, start_cell, end_cell)
+    if found_path:
+        display_path(grid_data, found_path)
+        save_map(grid_data, 'final_grid.txt')
+        print("Końcowa mapa została zapisana w 'final_grid.txt'.")
     else:
-        print("Nie znaleziono ścieżki.")
+        print("Nie znaleziono ścieżki!")
