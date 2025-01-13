@@ -28,7 +28,6 @@ def a_star(grid, start, goal):
     came_from = {}
     g_score = {start: 0}
     f_score = {start: heuristic(start, goal)}
-    open_set_list = []
     closed_set = []
 
     while open_set:
@@ -41,7 +40,7 @@ def a_star(grid, start, goal):
                 path.append(current)
                 current = came_from[current]
             path.append(start)
-            return path[::-1], open_set_list, closed_set
+            return path[::-1], closed_set
 
         closed_set.append(current)
 
@@ -59,20 +58,17 @@ def a_star(grid, start, goal):
                     g_score[neighbor] = tentative_g_score
                     f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
                     heapq.heappush(open_set, (f_score[neighbor], neighbor))
-                    if neighbor not in open_set_list:
-                        open_set_list.append(neighbor)
 
-    return None, open_set_list, closed_set
+    return None, closed_set
 
 # Wizualizacja mapy i animacja algorytmu A*
-def visualize(grid, path=None, open_set_list=None, closed_set=None):
+def visualize(grid, path=None, closed_set=None):
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("A* Algorithm Visualization")
     clock = pygame.time.Clock()
 
     path_built = False
-    draw_open_closed_done = False
     path_index = 0
 
     screen.fill((255, 255, 255))
@@ -91,23 +87,13 @@ def visualize(grid, path=None, open_set_list=None, closed_set=None):
                     pygame.draw.rect(screen, (255, 255, 0), rect)
                 pygame.draw.rect(screen, (200, 200, 200), rect, 1)
 
-    def draw_open_closed():
-        nonlocal draw_open_closed_done
-        for x, y in open_set_list[:-1]:
-            rect = pygame.Rect(y * CELL_SIZE, x * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            pygame.draw.rect(screen, (0, 0, 255), rect)
-            pygame.draw.rect(screen, (200, 200, 200), rect, 1)
-            pygame.display.flip()
-            pygame.time.delay(20)
-
+    def draw_closed_set():
         for x, y in closed_set[1:]:
             rect = pygame.Rect(y * CELL_SIZE, x * CELL_SIZE, CELL_SIZE, CELL_SIZE)
             pygame.draw.rect(screen, (255, 0, 0), rect)
             pygame.draw.rect(screen, (200, 200, 200), rect, 1)
             pygame.display.flip()
             pygame.time.delay(20)
-
-        draw_open_closed_done = True
 
     running = True
 
@@ -118,10 +104,11 @@ def visualize(grid, path=None, open_set_list=None, closed_set=None):
 
         draw_grid()
 
-        if not draw_open_closed_done:
-            draw_open_closed()
+        if closed_set:
+            draw_closed_set()
+            closed_set = None  # Чтобы отобразить закрытый список только один раз
 
-        if draw_open_closed_done and path and not path_built:
+        if path and not path_built:
             if path_index < len(path):
                 x, y = path[path_index]
                 grid[x][y] = PATH
@@ -163,10 +150,10 @@ else:
     grid[start[0]][start[1]] = START
     grid[goal[0]][goal[1]] = GOAL
 
-    path, open_set_list, closed_set = a_star(grid, start, goal)
+    path, closed_set = a_star(grid, start, goal)
 
     if path:
-        visualize(grid, path, open_set_list, closed_set)
+        visualize(grid, path, closed_set)
         save_grid_to_file(grid, 'final_grid.txt')
         print("Finalny grid został zapisany w 'final_grid.txt'.")
     else:
