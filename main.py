@@ -2,25 +2,25 @@ import pygame
 import math
 import heapq
 
-# Константы для обозначения значений на карте
+# Stałe do oznaczania wartości na mapie
 FREE = 0
 OBSTACLE = 5
 PATH = 3
 START = 2
 GOAL = 4
 
-# Размеры экрана и клетки
+# Rozmiary ekranu i komórki
 CELL_SIZE = 30
-WIDTH = 20  # Количество столбцов
-HEIGHT = 20  # Количество строк
+WIDTH = 20  # Liczba kolumn
+HEIGHT = 20  # Liczba wierszy
 SCREEN_WIDTH = WIDTH * CELL_SIZE
 SCREEN_HEIGHT = HEIGHT * CELL_SIZE
 
-# Вспомогательная функция для вычисления евклидовой дистанции
+# Funkcja pomocnicza do obliczania odległości euklidesowej
 def heuristic(a, b):
     return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
 
-# Реализация алгоритма A*
+# Implementacja algorytmu A*
 def a_star(grid, start, goal):
     rows, cols = len(grid), len(grid[0])
     open_set = []
@@ -28,13 +28,13 @@ def a_star(grid, start, goal):
     came_from = {}
     g_score = {start: 0}
     f_score = {start: heuristic(start, goal)}
-    open_set_list = []  # Для отслеживания всех открытых ячеек
-    closed_set = []  # Для отслеживания всех обработанных ячеек
+    open_set_list = []  # Do śledzenia wszystkich otwartych komórek
+    closed_set = []  # Do śledzenia wszystkich przetworzonych komórek
 
     while open_set:
         _, current = heapq.heappop(open_set)
 
-        # Если достигли цели, восстанавливаем путь
+        # Jeśli osiągnięto cel, odtwarzamy ścieżkę
         if current == goal:
             path = []
             while current in came_from:
@@ -45,7 +45,7 @@ def a_star(grid, start, goal):
 
         closed_set.append(current)
 
-        # Перебираем соседей
+        # Iteracja po sąsiadach
         for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
             neighbor = (current[0] + dx, current[1] + dy)
             if 0 <= neighbor[0] < rows and 0 <= neighbor[1] < cols:
@@ -62,10 +62,10 @@ def a_star(grid, start, goal):
                     if neighbor not in open_set_list:
                         open_set_list.append(neighbor)
 
-    # Если путь не найден
+    # Jeśli ścieżka nie została znaleziona
     return None, open_set_list, closed_set
 
-# Визуализация карты и анимация алгоритма A*
+# Wizualizacja mapy i animacja algorytmu A*
 def visualize(grid, path=None, open_set_list=None, closed_set=None):
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -98,17 +98,17 @@ def visualize(grid, path=None, open_set_list=None, closed_set=None):
         nonlocal draw_open_closed_done
         for x, y in open_set_list[:-1]:
             rect = pygame.Rect(y * CELL_SIZE, x * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            pygame.draw.rect(screen, (0, 0, 255), rect)  # Синие клетки (открытые)
-            pygame.draw.rect(screen, (200, 200, 200), rect, 1)  # Сетка поверх
+            pygame.draw.rect(screen, (0, 0, 255), rect)  # Niebieskie komórki (otwarte)
+            pygame.draw.rect(screen, (200, 200, 200), rect, 1)  # Siatka na wierzchu
             pygame.display.flip()
-            pygame.time.delay(20)  # Задержка для анимации
+            pygame.time.delay(20)  # Opóźnienie animacji
 
         for x, y in closed_set[1:]:
             rect = pygame.Rect(y * CELL_SIZE, x * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            pygame.draw.rect(screen, (255, 0, 0), rect)  # Красные клетки (закрытые)
-            pygame.draw.rect(screen, (200, 200, 200), rect, 1)  # Сетка поверх
+            pygame.draw.rect(screen, (255, 0, 0), rect)  # Czerwone komórki (zamknięte)
+            pygame.draw.rect(screen, (200, 200, 200), rect, 1)  # Siatka na wierzchu
             pygame.display.flip()
-            pygame.time.delay(20)  # Задержка для анимации
+            pygame.time.delay(20)  # Opóźnienie animacji
 
         draw_open_closed_done = True
 
@@ -121,18 +121,18 @@ def visualize(grid, path=None, open_set_list=None, closed_set=None):
 
         draw_grid()
 
-        # Отрисовка открытых и закрытых клеток
+        # Rysowanie otwartych i zamkniętych komórek
         if not draw_open_closed_done:
             draw_open_closed()
 
-        # Построение пути
+        # Budowanie ścieżki
         if draw_open_closed_done and path and not path_built:
             if path_index < len(path):
                 x, y = path[path_index]
                 grid[x][y] = PATH
                 path_index += 1
                 pygame.display.flip()
-                pygame.time.delay(50)  # Задержка для отображения пути
+                pygame.time.delay(50)  # Opóźnienie wyświetlania ścieżki
             else:
                 path_built = True
 
@@ -141,7 +141,7 @@ def visualize(grid, path=None, open_set_list=None, closed_set=None):
 
     pygame.quit()
 
-# Загрузка карты из файла
+# Ładowanie mapy z pliku
 def load_grid_from_file(filename):
     with open(filename, 'r') as file:
         grid = []
@@ -149,26 +149,26 @@ def load_grid_from_file(filename):
             grid.append(list(map(int, line.split())))
     return grid
 
-# Загрузка карты из файла grid.txt
+# Ładowanie mapy z pliku grid.txt
 grid = load_grid_from_file('grid.txt')
 
-# Старт и цель
+# Start i cel
 start = (0, 0)
 goal = (19, 16)
 
-# Проверка на барьеры
+# Sprawdzenie przeszkód
 if grid[start[0]][start[1]] == OBSTACLE or grid[goal[0]][goal[1]] == OBSTACLE:
-    print("Старт или цель находятся на препятствии!")
+    print("Start lub cel znajduje się na przeszkodzie!")
 else:
-    # Отметим старт и цель на карте
+    # Oznaczamy start i cel na mapie
     grid[start[0]][start[1]] = START
     grid[goal[0]][goal[1]] = GOAL
 
-    # Поиск пути с использованием A*
+    # Szukanie ścieżki za pomocą A*
     path, open_set_list, closed_set = a_star(grid, start, goal)
 
-    # Если путь найден, визуализируем
+    # Jeśli ścieżka została znaleziona, wizualizujemy
     if path:
         visualize(grid, path, open_set_list, closed_set)
     else:
-        print("Путь не найден.")
+        print("Nie znaleziono ścieżki.")
